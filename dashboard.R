@@ -4,6 +4,8 @@ library(ggmap)
 library(dplyr)
 library(leaflet)
 library(data.table)
+library(geosphere)
+set.seed(678)
 
 # Read in the data
 # Add city name
@@ -18,6 +20,19 @@ airport.data <- fread("https://raw.githubusercontent.com/jpatokal/openflights/ma
 #order.by.dest <- as.data.frame(table(flight.data$DEST))
 #order.by.dest <- order.by.dest[order(-order.by.dest$Freq),c(1,2)]
 
+fl.airports <- c("PNS","VPS","ECP",
+                 "TLH", "JAX","GNV",
+                 "DAB","SFB","MCO",
+                 "MLB","TPA","PIE",
+                 "SRQ","PGD","RSW",
+                 "PBI","FLL","MIA","EYW")
+fl.airports <- data.frame(fl.airports)
+fl.airports$name <- c("Pensacola","Destin-Fort Walton","Panama City",
+                      "Tallahassee","Jacksonville","Gainesville",
+                      "Daytona Beach","Orlando-Sanford","Orlando",
+                      "Orlando-Melbourne","Tampa","St.Pete-Clearwater",
+                      "Sarasota","Punta Gorda","Fort Myers",
+                      "Palm Beach","For Lauderdale","Miami","Key West")
 # Cross reference the flites
 # Origin airportID, lat, lng
 origin.Data <- airport.data %>%
@@ -34,6 +49,10 @@ dest.Data <- airport.data %>%
 # Joing df to carry the necessary data for Visualization
 flight.data <- merge(flight.data,origin.Data, by = "ORIGIN")
 flight.data <- merge(flight.data,dest.Data, by ="DEST")
+
+flight.data <- flight.data %>%
+  filter(flight.data$ORIGIN %in% fl.airports$fl.airports)
+
 
 #total.airport.info <- unique(rbind(dest.Data,origin.Data))
 
@@ -53,7 +72,7 @@ ui <- dashboardPage(
                conditionalPanel(
                  condition = "input.src == 'org'",
                  selectInput("Select Flight Origin", "Select Flight Origin",
-                             choices = unique(flight.data$ORIGIN), multiple=TRUE, selectize=TRUE,
+                             choices = unique(fl.airports$name), multiple=TRUE, selectize=TRUE,
                              width = '98%')
                ),
                conditionalPanel(
@@ -63,12 +82,22 @@ ui <- dashboardPage(
                              width = '98%')
                ),
                
-               sliderInput("range", "Tme Range:",
+               sliderInput("range", "Day in Month Range:",
                            min = 1, max = 31,
                            value = c(1:31)),
                
                radioButtons("sort", "Would you like to sort by Carrier",
-                            c("Yes","No"))
+                            c("Yes","No")),
+               conditionalPanel(
+                 condition = "input.sort == 'Yes'",
+                 selectInput("Select Air Carrier", "Select Air Carrier",
+                             choices = unique(flight.data$CARRIER), multiple=TRUE, selectize=TRUE,
+                             width = '98%')
+               ),
+               
+               actionButton("check",
+                            "Check out some Stats!s
+                            ")
                
                
                
@@ -115,11 +144,23 @@ server <- function(input, output) {
   
   # Leaflet map with 2 markers
   output$map <- renderLeaflet({
-    leaflet(flight.data )%>%
+ 
+    
+    flight.data <- sample_n(flight.data,1000)
+
+    #flight.data <
+    geo_lines <- gcIntermediate(
+      flight.data %>%
+        select(origin.lng, origin.lat),
+      flight.data %>%
+        select(dest.lng, dest.lat),
+      sp = TRUE
+    )
+    
+    leaflet() %>%
       addTiles() %>%
-      setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
-      addCircles(~dest.Data$dest.lng,~dest.Data$dest.lat ,popup = dest.Data$DEST, weight = 3, radius=40, 
-                 color="red")
+      addPolylines(data = geo_lines, color = "#2c7bb6", opacity = 0.2, weight = 1)
+
   })
   
   
