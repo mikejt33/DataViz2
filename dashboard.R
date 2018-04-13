@@ -61,7 +61,15 @@ ui <- dashboardPage(
                  selectInput("Select Flight Destination", "Select Flight Destination",
                              choices = unique(flight.data$DEST), multiple=TRUE, selectize=TRUE,
                              width = '98%')
-               )
+               ),
+               
+               sliderInput("range", "Tme Range:",
+                           min = 1, max = 31,
+                           value = c(1:31)),
+               
+               radioButtons("sort", "Would you like to sort by Carrier",
+                            c("Yes","No"))
+               
                
                
                )
@@ -71,6 +79,7 @@ ui <- dashboardPage(
   ),
   ## Body content
   dashboardBody(
+    tags$body(tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}")),
     tabItems(
       # First tab content
       tabItem(tabName = "dashboard",
