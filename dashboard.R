@@ -5,6 +5,39 @@ library(dplyr)
 library(leaflet)
 library(data.table)
 
+# Read in the data
+flight.data <- read.csv("data.csv")
+flight.data <- flight.data %>%
+  select(ORIGIN,DEST,CARRIER,DAY_OF_MONTH,DEP_TIME,DEP_DELAY,ARR_DELAY,ARR_TIME)
+airport.data <- fread("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat")
+
+# Subsetting data table
+#order.by.origin <- as.data.frame(table(flight.data$ORIGIN))
+#order.by.origin <- order.by.origin[order(-order.by.origin$Freq),c(1,2)]
+#order.by.dest <- as.data.frame(table(flight.data$DEST))
+#order.by.dest <- order.by.dest[order(-order.by.dest$Freq),c(1,2)]
+
+# Cross reference the flites
+# Origin airportID, lat, lng
+origin.Data <- airport.data %>%
+  select(V3,V5,V7,V8) %>%
+  filter(V5 %in% flight.data$ORIGIN) %>%
+  rename(ORIGIN = V5, origin.lat = V7, origin.lng = V8, city = V3)
+
+# Destination airportTD, lat, lng
+dest.Data <- airport.data %>%
+  select(V5,V7,V8) %>%
+  filter(V5 %in% flight.data$DEST) %>%
+  rename(DEST = V5,dest.lat = V7, dest.lng = V8)
+
+# Joing df to carry the necessary data for Visualization
+flight.data <- merge(flight.data,origin.Data, by = "ORIGIN")
+flight.data <- merge(flight.data,dest.Data, by ="DEST")
+
+#total.airport.info <- unique(rbind(dest.Data,origin.Data))
+
+
+
 ui <- dashboardPage(
   dashboardHeader(title = "Florida Airtraffic"),
   dashboardSidebar(
@@ -24,7 +57,10 @@ ui <- dashboardPage(
                 br(),
                 column(8,leafletOutput("map", height="600px")),
                 column(4,br(),br(),br(),br(),plotOutput("plot", height="300px")),
-                br()
+                br(),
+                h2("Select starting City"),
+                selectInput("city", "City", flight.data$ORIGIN,selected = "" )
+                
               )
           
       ),
@@ -40,36 +76,6 @@ ui <- dashboardPage(
 
 #####
 
-# Read in the data
-flight.data <- read.csv("Data/flights.csv")
-flight.data <- flight.data %>%
-  select(ORIGIN,DEST,CARRIER,DAY_OF_WEEK,FL_DATE,DEP_TIME,DEP_DELAY,ARR_DELAY,AIR_TIME,DISTANCE)
-airport.data <- fread("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat")
-
-# Subsetting data table
-order.by.origin <- as.data.frame(table(flight.data$ORIGIN))
-order.by.origin <- order.by.origin[order(-order.by.origin$Freq),c(1,2)]
-order.by.dest <- as.data.frame(table(flight.data$DEST))
-order.by.dest <- order.by.dest[order(-order.by.dest$Freq),c(1,2)]
-
-# Cross reference the flites
-# Origin airportID, lat, lng
-origin.Data <- airport.data %>%
-  select(V5,V7,V8) %>%
-  filter(V5 %in% flight.data$ORIGIN) %>%
-  rename(ORIGIN = V5, origin.lat = V7, origin.lng = V8)
-
-# Destination airportTD, lat, lng
-dest.Data <- airport.data %>%
-  select(V5,V7,V8) %>%
-  filter(V5 %in% flight.data$DEST) %>%
-  rename(DEST = V5,dest.lat = V7, dest.lng = V8)
-
-# Joing df to carry the necessary data for Visualization
-flight.data <- merge(flight.data,origin.Data, by = "ORIGIN")
-flight.data <- merge(flight.data,dest.Data, by ="DEST")
-
-#total.airport.info <- unique(rbind(dest.Data,origin.Data))
 
 
 ######
@@ -90,6 +96,7 @@ server <- function(input, output) {
       addCircles(~dest.Data$dest.lng,~dest.Data$dest.lat ,popup = dest.Data$DEST, weight = 3, radius=40, 
                  color="red")
   })
+  
   
   # store the click
   observeEvent(input$map_marker_click,{

@@ -7,7 +7,7 @@ library(dplyr)
 library(data.table)
 
 # Read in the data
-flight.data <- read.csv("Data/flights.csv")
+flight.data <- read.csv("2017FL_performance.csv")
 flight.data <- flight.data %>%
   select(ORIGIN,DEST,CARRIER,DAY_OF_WEEK,FL_DATE,DEP_TIME,DEP_DELAY,ARR_DELAY,AIR_TIME,DISTANCE)
 airport.data <- fread("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat")
