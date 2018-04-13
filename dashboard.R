@@ -6,6 +6,7 @@ library(leaflet)
 library(data.table)
 
 # Read in the data
+# Add city name
 flight.data <- read.csv("data.csv")
 flight.data <- flight.data %>%
   select(ORIGIN,DEST,CARRIER,DAY_OF_MONTH,DEP_TIME,DEP_DELAY,ARR_DELAY,ARR_TIME)
@@ -43,8 +44,29 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-      menuItem("Widgets", icon = icon("th"), tabName = "widgets",
-               badgeLabel = "new", badgeColor = "green")
+      menuItem("Stats", icon = icon("bar-chart-o"), tabName = "stats"),
+      menuItem("Inputs", icon = icon("bar-chart-o"),
+               
+               radioButtons("src", "Choose Origin or Destination:",
+                            c("Flights originating from" = "org",
+                              "Flights whose destination is" = "Dest")),
+               conditionalPanel(
+                 condition = "input.src == 'org'",
+                 selectInput("Select Flight Origin", "Select Flight Origin",
+                             choices = unique(flight.data$ORIGIN), multiple=TRUE, selectize=TRUE,
+                             width = '98%')
+               ),
+               conditionalPanel(
+                 condition = "input.src == 'Dest'",
+                 selectInput("Select Flight Destination", "Select Flight Destination",
+                             choices = unique(flight.data$DEST), multiple=TRUE, selectize=TRUE,
+                             width = '98%')
+               )
+               
+               
+               )
+               # Input directly under menuItem
+
     )
   ),
   ## Body content
@@ -54,13 +76,7 @@ ui <- dashboardPage(
       tabItem(tabName = "dashboard",
               
               fluidPage(
-                br(),
-                column(8,leafletOutput("map", height="600px")),
-                column(4,br(),br(),br(),br(),plotOutput("plot", height="300px")),
-                br(),
-                h2("Select starting City"),
-                selectInput("city", "City", flight.data$ORIGIN,selected = "" )
-                
+                leafletOutput("map", height="800px", width = "100%")
               )
           
       ),
@@ -99,20 +115,10 @@ server <- function(input, output) {
   
   
   # store the click
-  observeEvent(input$map_marker_click,{
-    data_of_click$clickedMarker <- input$map_marker_click
-  }) 
+ 
   
   # Make a barplot or scatterplot depending of the selected point
-  output$plot=renderPlot({
-    my_place=data_of_click$clickedMarker$id
-    if(is.null(my_place)){my_place="place1"}
-    if(my_place=="place1"){
-      plot(rnorm(1000), col=rgb(0.9,0.4,0.1,0.3), cex=3, pch=20)
-    }else{
-      barplot(rnorm(10), col=rgb(0.1,0.4,0.9,0.3))
-    }    
-  })
+
 }
 
 
