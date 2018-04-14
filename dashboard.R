@@ -5,6 +5,7 @@ library(dplyr)
 library(leaflet)
 library(data.table)
 library(geosphere)
+library(bazar)
 set.seed(678)
 
 # Read in the data
@@ -65,23 +66,17 @@ ui <- dashboardPage(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
       menuItem("Stats", icon = icon("bar-chart-o"), tabName = "stats"),
       menuItem("Inputs", icon = icon("bar-chart-o"),
-               
-               radioButtons("src", "Choose Origin or Destination:",
-                            c("Flights originating from" = "org",
-                              "Flights whose destination is" = "Dest")),
-               conditionalPanel(
-                 condition = "input.src == 'org'",
-                 selectInput("Select Flight Origin", "Select Flight Origin",
-                             choices = unique(fl.airports$name), multiple=TRUE, selectize=TRUE,
-                             width = '98%')
-               ),
+
+            
                conditionalPanel(
                  condition = "input.src == 'Dest'",
                  selectInput("Select Flight Destination", "Select Flight Destination",
                              choices = unique(flight.data$DEST), multiple=TRUE, selectize=TRUE,
                              width = '98%')
                ),
-               
+               selectInput("florigin", "Select Flight Origin",
+                           choices = unique(fl.airports$name), multiple=TRUE, selectize=TRUE,
+                           width = '98%'),
                sliderInput("range", "Day in Month Range:",
                            min = 1, max = 31,
                            value = c(1:31)),
@@ -114,14 +109,17 @@ ui <- dashboardPage(
       tabItem(tabName = "dashboard",
               
               fluidPage(
+                renderPrint("text"),
                 leafletOutput("map", height="800px", width = "100%")
               )
           
       ),
       
       # Second tab content
-      tabItem(tabName = "widgets",
-              h2("Widgets tab content")
+      tabItem(tabName = "stats",
+              fluidPage(
+                dataTableOutput('table')
+              )
       )
     )
 
@@ -144,24 +142,51 @@ server <- function(input, output) {
   
   # Leaflet map with 2 markers
   output$map <- renderLeaflet({
+    
+
  
     
     flight.data <- sample_n(flight.data,1000)
+    #flight.data <- flight.data %>%
+     # filter(input$florigin)
+    
+    
+    # user.input<- flight.data %>%
+    #  filter(input$)
+    
+    #flight.data <
+
+    
+    a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% input$range)
+    # & flight.data$DAY_OF_MONTH %in%input$range)
+
 
     #flight.data <
     geo_lines <- gcIntermediate(
-      flight.data %>%
+      a %>%
         select(origin.lng, origin.lat),
-      flight.data %>%
+      a %>%
         select(dest.lng, dest.lat),
       sp = TRUE
     )
-    
-    leaflet() %>%
-      addTiles() %>%
-      addPolylines(data = geo_lines, color = "#2c7bb6", opacity = 0.2, weight = 1)
+
+      leaflet() %>% setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
+        addTiles() %>%
+        addPolylines(data = geo_lines, color = "black", opacity = 1, weight = 1)
 
   })
+  
+  output$table <- renderPrint({input$range}
+  )
+
+  #output$table <- renderDataTable(
+    
+    
+   #a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% range(input$range))
+    
+  #)
+ 
+
   
   
   # store the click
