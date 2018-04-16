@@ -1,4 +1,5 @@
 ## app.R ##
+library(shiny)
 library(shinydashboard)
 library(ggmap)
 library(dplyr)
@@ -33,7 +34,7 @@ fl.airports$name <- c("Pensacola","Destin-Fort Walton","Panama City",
                       "Daytona Beach","Orlando-Sanford","Orlando",
                       "Orlando-Melbourne","Tampa","St.Pete-Clearwater",
                       "Sarasota","Punta Gorda","Fort Myers",
-                      "Palm Beach","For Lauderdale","Miami","Key West")
+                      "Palm Beach","Fort Lauderdale","Miami","Key West")
 # Cross reference the flites
 # Origin airportID, lat, lng
 origin.Data <- airport.data %>%
@@ -57,6 +58,23 @@ flight.data <- flight.data %>%
 
 #total.airport.info <- unique(rbind(dest.Data,origin.Data))
 
+Florida_pops <- read.table("Florida_cities.csv", header = TRUE, sep = ",")
+colnames(Florida_pops) <- c("city", "pop")
+#Florida_pops$city <- tolower(Florida_pops$city)
+#flight.data$city <- tolower(flight.data$city)
+
+new <- as.data.frame(fl.airports$name)
+colnames(new) <- "city"
+
+for (i in new$city ) {
+  new[new$city == i,"avg_delay"] <- mean(flight.data[flight.data$city == i,"DEP_DELAY"], na.rm = TRUE)
+  new[new$city == i,"delayed_freq"] <- nrow(flight.data[flight.data$city == i & flight.data$DEP_DELAY > 15 ,])/nrow(flight.data[flight.data$city == i,])
+  new[new$city == i,"total"] <- nrow(flight.data[flight.data$city == i,])
+}
+
+test <- merge(new, Florida_pops, by = "city")
+test$pop <- as.numeric(gsub(",", "", test$pop))
+
 
 
 ui <- dashboardPage(
@@ -66,8 +84,8 @@ ui <- dashboardPage(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
       menuItem("Stats", icon = icon("bar-chart-o"), tabName = "stats"),
       menuItem("Inputs", icon = icon("bar-chart-o"),
-
-            
+               
+               
                conditionalPanel(
                  condition = "input.src == 'Dest'",
                  selectInput("Select Flight Destination", "Select Flight Destination",
@@ -91,14 +109,14 @@ ui <- dashboardPage(
                ),
                
                actionButton("check",
-                            "Check out some Stats!
+                            "Check out some Stats!s
                             ")
                
                
                
                )
-               # Input directly under menuItem
-
+      # Input directly under menuItem
+      
     )
   ),
   ## Body content
@@ -112,17 +130,19 @@ ui <- dashboardPage(
                 renderPrint("text"),
                 leafletOutput("map", height="800px", width = "100%")
               )
-          
+              
       ),
       
       # Second tab content
       tabItem(tabName = "stats",
               fluidPage(
-                dataTableOutput('table')
+                dataTableOutput('table'),
+                plotOutput('distPlot'),
+                plotOutput("histPlot")
               )
       )
     )
-
+    
   ))
 
 
@@ -143,42 +163,56 @@ server <- function(input, output) {
   # Leaflet map with 2 markers
   output$map <- renderLeaflet({
     
-
- 
     
-    #flight.data <- sample_n(flight.data,1000)
-    flight.data$id <- seq.int(nrow(flight.data))
     
-    a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
     
-    m <-leaflet() %>% setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
-        addTiles() 
-      for (i in 1:nrow(a))
-        m <- m %>% addPolylines(lat = c(a[i,]$origin.lat, a[i,]$dest.lat),
-                                lng = c(a[i,]$origin.lng, a[i,]$dest.lng),
-                                weight = 2, opacity = .1, color = "green")
-      m
-      # TODO : Show avg delaytime per flight
+    flight.data <- sample_n(flight.data,1000)
+    #flight.data <- flight.data %>%
+    # filter(input$florigin)
+    
+    
+    # user.input<- flight.data %>%
+    #  filter(input$)
+    
+    #flight.data <
+    
+    
+    a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% input$range)
+    # & flight.data$DAY_OF_MONTH %in%input$range)
+    
+    
+    #flight.data <
+    geo_lines <- gcIntermediate(
+      a %>%
+        select(origin.lng, origin.lat),
+      a %>%
+        select(dest.lng, dest.lat),
+      sp = TRUE
+    )
+    
+    leaflet() %>% setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
+      addTiles() %>%
+      addPolylines(data = geo_lines, color = "black", opacity = 1, weight = 1)
+    
   })
   
-
-
-  output$table <- renderDataTable(
-    
-    
-
-   a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
-    
+  output$table <- renderPrint({input$range}
   )
- 
-
+  
+  output$distPlot <- renderPlot({
+    #a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% range(input$range))
+    ggplot(data = test,aes(x = test$pop, y =test$avg_delay )) + geom_bar(stat = "identity",color = "black") + 
+      labs(x = "Size of city",y = "avg delay time (in minutes)") + theme_minimal()+ geom_bar(stat = "identity", data=test[test$city == input$florigin,], aes(x=pop, y=avg_delay), colour="green", size = 2)
+    
+    
+  })
+  
+  output$histPlot <- renderPlot({
+    ggplot(data = test,aes(x = test$delayed_freq)) + geom_histogram(binwidth = .025, color = "black")+ labs(x = "proportion of delayed flights", y = "count") + geom_histogram(data=test[test$city ==input$florigin ,], aes(x= delayed_freq),binwidth = .025, fill="lightblue")
+  })
   
   
-  # store the click
- 
   
-  # Make a barplot or scatterplot depending of the selected point
-
 }
 
 
