@@ -91,7 +91,7 @@ ui <- dashboardPage(
                ),
                
                actionButton("check",
-                            "Check out some Stats!s
+                            "Check out some Stats!
                             ")
                
                
@@ -146,45 +146,30 @@ server <- function(input, output) {
 
  
     
-    flight.data <- sample_n(flight.data,1000)
-    #flight.data <- flight.data %>%
-     # filter(input$florigin)
+    #flight.data <- sample_n(flight.data,1000)
+    flight.data$id <- seq.int(nrow(flight.data))
     
+    a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
     
-    # user.input<- flight.data %>%
-    #  filter(input$)
-    
-    #flight.data <
-
-    
-    a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% input$range)
-    # & flight.data$DAY_OF_MONTH %in%input$range)
-
-
-    #flight.data <
-    geo_lines <- gcIntermediate(
-      a %>%
-        select(origin.lng, origin.lat),
-      a %>%
-        select(dest.lng, dest.lat),
-      sp = TRUE
-    )
-
-      leaflet() %>% setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
-        addTiles() %>%
-        addPolylines(data = geo_lines, color = "black", opacity = 1, weight = 1)
-
+    m <-leaflet() %>% setView(lat =28.4312, lng = -81.3081, zoom = 5) %>%
+        addTiles() 
+      for (i in 1:nrow(a))
+        m <- m %>% addPolylines(lat = c(a[i,]$origin.lat, a[i,]$dest.lat),
+                                lng = c(a[i,]$origin.lng, a[i,]$dest.lng),
+                                weight = 2, opacity = .1, color = "green")
+      m
+      # TODO : Show avg delaytime per flight
   })
   
-  output$table <- renderPrint({input$range}
-  )
 
-  #output$table <- renderDataTable(
+
+  output$table <- renderDataTable(
     
     
-   #a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% range(input$range))
+
+   a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
     
-  #)
+  )
  
 
   
