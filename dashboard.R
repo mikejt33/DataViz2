@@ -92,10 +92,10 @@ ui <- dashboardPage(
     sidebarMenu(
       menuItem("Map", tabName = "dashboard", icon = icon("plane")),
       menuItem("Data", icon = icon("table"), tabName = "stats"),
-      menuItem("Network Graph", icon = icon("gg"), tabName = "network"),
+      menuItem("City Stats", icon = icon("gg"), tabName = "network"),
       menuItem("Delay Stats", icon = icon("wrench"), tabName = "delay"),
       menuItem("Inputs", icon = icon("bar-chart-o"),
-
+ 
             
                conditionalPanel(
                  condition = "input.src == 'Dest'",
