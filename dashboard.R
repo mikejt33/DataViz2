@@ -80,6 +80,7 @@ for (i in new$city ) {
   new[new$city == i,"avg_delay"] <- mean(flight.data[flight.data$city == i,"DEP_DELAY"], na.rm = TRUE)
   new[new$city == i,"delayed_freq"] <- nrow(flight.data[flight.data$city == i & flight.data$DEP_DELAY > 15 ,])/nrow(flight.data[flight.data$city == i,])
   new[new$city == i,"total"] <- nrow(flight.data[flight.data$city == i,])
+  new[new$city == i,"avg_delay_delay"] <- mean(as.numeric(flight.data[flight.data$city == i & flight.data$DEP_DELAY > 15 ,"DEP_DELAY"]), na.rm = TRUE)
 }
 
 test <- merge(new, Florida_pops, by = "city")
@@ -143,8 +144,11 @@ ui <- dashboardPage(
       ),
       tabItem(tabName = "delay",
               fluidPage(
-                plotOutput('distPlot'),
-                plotOutput("histPlot")
+                
+                plotOutput("histPlot"),
+                plotOutput("histPlot2"),
+                plotOutput("histPlot3"),
+                plotOutput("Plot4")
                 
               ))
     )
@@ -217,20 +221,44 @@ server <- function(input, output) {
  
   )
   
-  output$distPlot <- renderPlot({
-    #a <- subset(flight.data, flight.data$city ==input$florigin & flight.data$DAY_OF_MONTH %in% range(input$range))
-    ggplot(data = test,aes(x = test$pop, y =test$avg_delay )) + 
-      geom_bar(stat = "identity",color = "black") + 
-      labs(x = "Size of city",y = "avg delay time (in minutes)") + 
-      theme_minimal()+ geom_bar(stat = "identity", data=test[test$city == input$florigin,], aes(x=pop, y=avg_delay), colour="green", size = 2)
-  })
-  
   output$histPlot <- renderPlot({
     ggplot(data = test,aes(x = test$delayed_freq)) + 
-      geom_histogram(binwidth = .025, color = "black")+ 
-      labs(x = "proportion of delayed flights", y = "count") +
-      geom_histogram(data=test[test$city ==input$florigin ,], aes(x= delayed_freq),binwidth = .025, fill="lightblue")
+      geom_density(fill = "blue", alpha = .3)+ 
+      labs(x = "Proportion of delayed flights", y = "Count", title = paste(input$florigin,"in Distribution of cities", sep = " ", collapse = NULL)) +
+        geom_vline(aes(xintercept=test[test$city == input$florigin,"delayed_freq"]),   # Ignore NA values for mean
+                   color="red", linetype="dashed", size=1) +
+      theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
   })
+  
+  output$histPlot2 <- renderPlot({
+    ggplot(data = flight.data,aes(x = flight.data$DEP_DELAY)) + 
+      geom_density(fill = "red", alpha = .5)+ 
+      labs(x = "Average delays", y = "Count", title = paste("Mean avg delay of",input$florigin, "in dist of all delays", sep = " ", collapse = NULL)) +
+      geom_vline(aes(xintercept=test[test$city == input$florigin,"avg_delay"]),   # Ignore NA values for mean
+                 color="blue", linetype="dashed", size=1) + xlim(-20,100) + 
+      geom_vline(aes(xintercept=mean(test$avg_delay)),   # Ignore NA values for mean
+                 color="black", size=1) + xlim(-20,100) + annotate(geom="text", x=80, y=.06, label="solid line denotes overall mean",
+                                                                   color="black") +
+      theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
+    })
+  
+  
+  
+  output$histPlot3 <- renderPlot({
+    new1 <- flight.data
+    new1[new1$city == input$florigin ,"new"] <- "City"
+    new1[new1$city != input$florigin ,"new"] <- "Rest"
+    ggplot(data = new1,aes(factor(new),y = DEP_DELAY, fill = new)) + geom_boxplot(outlier.shape = NA,alpha = .8)+ylim(-30,80) + scale_fill_brewer(palette="Set1")+
+      labs(x = "",y = "Departure Delay", title = paste(input$florigin,"flights compared to all others", sep = " ", collapse = NULL)) +
+      theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
+  })
+  
+  output$Plot4 <- renderPlot({
+    ggplot(data = flight.data[flight.data$city == input$florigin,],aes(x= DAY_OF_MONTH,y = DEP_DELAY)) + geom_smooth(size = 3, se = FALSE, color = "purple") +
+      labs(x = "Day of the Month", y = "Average delay time", title = paste("Delay time change across month for",input$florigin, sep = " ", collapse = NULL))+
+      theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
+  })
+  
 }
 
 shinyApp(ui, server)
