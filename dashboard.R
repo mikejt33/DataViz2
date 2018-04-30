@@ -38,6 +38,21 @@ fl.airports$name <- c("Pensacola","Destin-Fort Walton","Panama City",
                       "Orlando-Melbourne","Tampa","St.Pete-Clearwater",
                       "Sarasota","Punta Gorda","Fort Myers",
                       "Palm Beach","For Lauderdale","Miami","Key West")
+
+air.carriers <- c("Allegiant Air","Spirit", "Southwest",
+                  "JetBlue", "Delta", "American",
+                  "Midwest","Endeavor","ExpressJet",
+                  "SkyWest","Frontier","Envoy",
+                  "United","US Airways","Mesa",
+                  "Virgin","Alaska")
+CARRIER <- c("G4","NK", "WN",
+             "B6","DL", "AA",
+             "YX", "9E","EV",
+             "OO","F9","MQ",
+             "UA","OH","YV",
+             "VX","AS")
+carrier <- data.frame(air.carriers,CARRIER)
+
 # Cross reference the flites
 # Origin airportID, lat, lng
 origin.Data <- airport.data %>%
@@ -54,6 +69,7 @@ dest.Data <- airport.data %>%
 # Joing df to carry the necessary data for Visualization
 flight.data <- merge(flight.data,origin.Data, by = "ORIGIN")
 flight.data <- merge(flight.data,dest.Data, by ="DEST")
+flight.data <- merge(flight.data, carrier, by = "CARRIER")
 
 flight.data <- flight.data %>%
   filter(flight.data$ORIGIN %in% fl.airports$fl.airports)
@@ -91,9 +107,9 @@ ui <- dashboardPage(
   dashboardHeader(title = "Florida Airtraffic"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Map", tabName = "dashboard", icon = icon("plane")),
+      menuItem("Map", tabName = "dashboard", icon = icon("globe")),
       menuItem("Data", icon = icon("table"), tabName = "stats"),
-      menuItem("City Stats", icon = icon("gg"), tabName = "network"),
+      menuItem("Carrier Stats", icon = icon("plane"), tabName = "carrier"),
       menuItem("Delay Stats", icon = icon("wrench"), tabName = "delay"),
       menuItem("Inputs", icon = icon("bar-chart-o"),
  
@@ -150,6 +166,11 @@ ui <- dashboardPage(
                 plotOutput("histPlot3"),
                 plotOutput("Plot4")
                 
+              )),
+      tabItem(tabName = 'carrier',
+              fluidPage(
+                plotOutput("carrierPlot"),
+                plotOutput("carrierCount")
               ))
     )
   ))
@@ -257,6 +278,58 @@ server <- function(input, output) {
     ggplot(data = flight.data[flight.data$city == input$florigin,],aes(x= DAY_OF_MONTH,y = DEP_DELAY)) + geom_smooth(size = 3, se = FALSE, color = "purple") +
       labs(x = "Day of the Month", y = "Average delay time", title = paste("Delay time change across month for",input$florigin, sep = " ", collapse = NULL))+
       theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
+  })
+  
+  output$carrierPlot <- renderPlot({
+    ## Create plot that demonstrates delay by carrier
+    if(input$sort == "Yes"){
+      a <- subset(flight.data, flight.data$city == input$florigin & flight.data$bin == input$dtime & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
+    }
+    else{
+      a <- subset(flight.data, flight.data$city ==  input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2])) 
+    }
+    
+    b <- a %>%
+      group_by(air.carriers) %>%
+      count(air.carriers)
+    
+    c <- a %>%
+      group_by(air.carriers) %>%
+      summarise(avg.delay.carrier = mean(DEP_DELAY))
+    
+    total <- merge(b,c, by = "air.carriers")
+    
+    
+    # Avg delay per carrier
+    bar.delay <- ggplot(data = total, aes(x = total$air.carriers, y = total$avg.delay.carrier))
+    bar.delay +geom_bar(stat = "identity", fill = "grey", colour = "red") + 
+      xlab("Air Carriers") + 
+      ylab("Average Delay per Carrier (min)")
+  })
+  
+  output$carrierCount <- renderPlot({
+    #Count per carrier
+    
+    
+    if(input$sort == "Yes"){
+      a <- subset(flight.data, flight.data$city == input$florigin & flight.data$bin == input$dtime & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2]))
+    }
+    else{
+      a <- subset(flight.data, flight.data$city ==  input$florigin & flight.data$DAY_OF_MONTH %in% (input$range[1]:input$range[2])) 
+    }
+    
+    b <- a %>%
+      group_by(air.carriers) %>%
+      count(air.carriers)
+    
+    c <- a %>%
+      group_by(air.carriers) %>%
+      summarise(avg.delay.carrier = mean(DEP_DELAY))
+    
+    total <- merge(b,c, by = "air.carriers")
+    
+    ggplot(data = total, aes(x = total$air.carriers, y = total$n)) + geom_bar(stat = "identity", fill = "grey", colour = "blue") + 
+      xlab("Air Carriers") + ylab("Number of Flights") 
   })
   
 }
