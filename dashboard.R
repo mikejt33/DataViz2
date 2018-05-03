@@ -70,8 +70,6 @@ dest.Data <- airport.data %>%
 flight.data <- merge(flight.data,origin.Data, by = "ORIGIN")
 flight.data <- merge(flight.data,dest.Data, by ="DEST")
 flight.data <- merge(flight.data, carrier, by = "CARRIER")
-fl.airports$ORIGIN <- fl.airports$fl.airports
-flight.data <- merge(flight.data,fl.airports, by = "ORIGIN" )
 
 flight.data <- flight.data %>%
   filter(flight.data$ORIGIN %in% fl.airports$fl.airports)
@@ -95,13 +93,14 @@ new <- as.data.frame(fl.airports$name)
 colnames(new) <- "city"
 
 for (i in new$city ) {
-  new[new$city == i,"avg_delay"] <- mean(flight.data[flight.data$name == i,"DEP_DELAY"], na.rm = TRUE)
-  new[new$city == i,"delayed_freq"] <- nrow(flight.data[flight.data$name == i & flight.data$DEP_DELAY > 15 ,])/nrow(flight.data[flight.data$name == i,])
-  new[new$city == i,"total"] <- nrow(flight.data[flight.data$name == i,])
-  new[new$city == i,"avg_delay_delay"] <- mean(as.numeric(flight.data[flight.data$name == i & flight.data$DEP_DELAY > 15 ,"DEP_DELAY"]), na.rm = TRUE)
+  new[new$city == i,"avg_delay"] <- mean(flight.data[flight.data$city == i,"DEP_DELAY"], na.rm = TRUE)
+  new[new$city == i,"delayed_freq"] <- nrow(flight.data[flight.data$city == i & flight.data$DEP_DELAY > 15 ,])/nrow(flight.data[flight.data$city == i,])
+  new[new$city == i,"total"] <- nrow(flight.data[flight.data$city == i,])
+  new[new$city == i,"avg_delay_delay"] <- mean(as.numeric(flight.data[flight.data$city == i & flight.data$DEP_DELAY > 15 ,"DEP_DELAY"]), na.rm = TRUE)
 }
 
-test <- new
+test <- merge(new, Florida_pops, by = "city")
+test$pop <- as.numeric(gsub(",", "", test$pop))
 
 
 ui <- dashboardPage(
@@ -268,15 +267,15 @@ server <- function(input, output) {
   
   output$histPlot3 <- renderPlot({
     new1 <- flight.data
-    new1[new1$name == input$florigin ,"new"] <- "City"
-    new1[new1$name != input$florigin ,"new"] <- "Rest"
+    new1[new1$city == input$florigin ,"new"] <- "City"
+    new1[new1$city != input$florigin ,"new"] <- "Rest"
     ggplot(data = new1,aes(factor(new),y = DEP_DELAY, fill = new)) + geom_boxplot(outlier.shape = NA,alpha = .8)+ylim(-30,80) + scale_fill_brewer(palette="Set1")+
       labs(x = "",y = "Departure Delay", title = paste(input$florigin,"flights compared to all others", sep = " ", collapse = NULL)) +
       theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
   })
   
   output$Plot4 <- renderPlot({
-    ggplot(data = flight.data[flight.data$name == input$florigin,],aes(x= DAY_OF_MONTH,y = DEP_DELAY)) + geom_smooth(size = 3, se = FALSE, color = "purple") +
+    ggplot(data = flight.data[flight.data$city == input$florigin,],aes(x= DAY_OF_MONTH,y = DEP_DELAY)) + geom_smooth(size = 3, se = FALSE, color = "purple") +
       labs(x = "Day of the Month", y = "Average delay time", title = paste("Delay time change across month for",input$florigin, sep = " ", collapse = NULL))+
       theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=25, hjust=0))
   })
