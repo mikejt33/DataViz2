@@ -4,13 +4,9 @@ library(ggmap)
 library(dplyr) 
 library(leaflet)
 library(data.table)
-library(geosphere)
-library(bazar)
 library(tidyr)
-library(htmltools)
-library(igraph)
-library(networkD3)
 set.seed(678)
+
 
 # Read in the data
 # Add city name
